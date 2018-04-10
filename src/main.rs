@@ -20,5 +20,5 @@ impl Handler for Server {
 }
 
 fn main() {
-    listen("127.0.0.1:8080", |out| Server { out }).unwrap()
+    listen("0.0.0.0:8080", |out| Server { out }).unwrap()
 }
