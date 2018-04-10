@@ -1,5 +1,43 @@
 var scene, camera, renderer;
 var geometry, material, mesh;
+var socket;
+
+let broadcastData = {
+    id: Math.floor(Math.random() * 10000)
+}
+let playerMap = {}
+function init_websockets() {
+    console.log("MY id is ", broadcastData.id);
+    socket = new WebSocket('ws://127.0.0.1:8080');
+
+    socket.onopen = function (e) {
+    };
+
+    socket.onerror = function (e) {
+        console.log(e);
+    };
+
+    socket.onmessage = function (e) {
+        let data = JSON.parse(e.data);
+        if (data.id == broadcastData.id) { return; }
+        console.log(data);
+        if (!playerMap[data.id]) {
+            let newBox = new THREE.BoxGeometry( 1, 1, 1);
+            let newBoxMat = new THREE.MeshBasicMaterial({
+                color: 0x00ff00, wireframe: true
+            });
+
+            let newMesh = new THREE.Mesh(newBox, newBoxMat);
+
+            playerMap[data.id] = newMesh;
+            scene.add(newMesh);
+        }
+        playerMap[data.id].position.x = data.position.x;
+        playerMap[data.id].position.y = data.position.y;
+        playerMap[data.id].position.z = data.position.z;
+    };
+}
+
 function init() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, .1, 1000 );
@@ -40,6 +78,7 @@ function init() {
     }
 
     animate();
+    init_websockets();
 }
 function makeFullscreen() {
     let el = renderer.domElement;
@@ -89,17 +128,21 @@ function lockChangeAlert() {
 
 let currentMoveKey = {};
 function moveUpdateKeydown(e) {
-    console.log('down', e);
     currentMoveKey[e.key] = true;
 }
 
 function moveUpdateKeyup(e) {
-    console.log('up', e);
     delete currentMoveKey[e.key];
 }
 
 function movementUpdate() {
     Object.keys(currentMoveKey).forEach(moveCamera);
+}
+
+function broadcastPosition() {
+    let data = broadcastData;
+    data.position = camera.position;
+    socket.send(JSON.stringify(data));
 }
 
 function moveCamera(key) {
@@ -125,6 +168,7 @@ function moveCamera(key) {
         default:
             break;
     }
+    broadcastPosition();
 }
 
 // Track vertical mouse movement
@@ -148,7 +192,6 @@ function rotateCamera(e) {
     camera.matrix.extractBasis(x,y,z);
     let real_y = new THREE.Vector3(0,1,0);
     let angle =  real_y.dot(y);
-    console.log(angle);
     if (angle < 0) {
         camera.matrx = camera_tmp;
         camera.rotation.setFromRotationMatrix(camera_tmp);

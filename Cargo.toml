@@ -1,0 +1,7 @@
+[package]
+name = "fps"
+version = "0.1.0"
+authors = ["bram <bwasti@gmail.com>"]
+
+[dependencies]
+ws = { git = "https://github.com/housleyjk/ws-rs.git" }
