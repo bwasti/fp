@@ -5,6 +5,31 @@ var socket;
 let broadcastData = {
     id: Math.floor(Math.random() * 10000)
 }
+
+class Player {
+
+    constructor() {
+        let newBox = new THREE.BoxGeometry( 1, 1, 1);
+        let newBoxMat = new THREE.MeshBasicMaterial({
+            color: 0x00ff00, wireframe: true
+        });
+
+        let newMesh = new THREE.Mesh(newBox, newBoxMat);
+        this.object = newMesh;
+        scene.add(this.object);
+    }
+
+    update(position) {
+        this.object.position.x = position.x;
+        this.object.position.y = position.y;
+        this.object.position.z = position.z;
+    }
+
+    kill() {
+        scene.remove(this.object.name);
+    }
+}
+
 let playerMap = {}
 function init_websockets() {
     console.log("MY id is ", broadcastData.id);
@@ -18,23 +43,30 @@ function init_websockets() {
     };
 
     socket.onmessage = function (e) {
-        let data = JSON.parse(e.data);
-        if (data.id == broadcastData.id) { return; }
-        console.log(data);
-        if (!playerMap[data.id]) {
-            let newBox = new THREE.BoxGeometry( 1, 1, 1);
-            let newBoxMat = new THREE.MeshBasicMaterial({
-                color: 0x00ff00, wireframe: true
-            });
-
-            let newMesh = new THREE.Mesh(newBox, newBoxMat);
-
-            playerMap[data.id] = newMesh;
-            scene.add(newMesh);
+        console.log(e.data);
+        let i = e.data.indexOf("--");
+        let id = Number.parseInt(e.data.slice(0, i));
+        let json_str = e.data.slice(i + 2);
+        // This means we are new
+        if (json_str.length == 0) {
+            broadcastData.id = id;
+            return;
         }
-        playerMap[data.id].position.x = data.position.x;
-        playerMap[data.id].position.y = data.position.y;
-        playerMap[data.id].position.z = data.position.z;
+
+        let data = JSON.parse(json_str);
+        if (id == broadcastData.id) { return; }
+
+        console.log(data);
+        if (data.position) {
+            if (!playerMap[id]) {
+                playerMap[id] = new Player();
+            }
+            playerMap[id].update(data.position);
+        }
+        if (data.delete) {
+            playerMap[id].kill();
+            delete playerMap[id];
+        }
     };
 }
 
